@@ -4,6 +4,7 @@ import os
 import time
 import logging
 from requests import HTTPError
+from requests.auth import HTTPBasicAuth
 from requests.exceptions import RequestException
 from requests.compat import json
 from requests_oauthlib import OAuth2Session
@@ -17,10 +18,11 @@ BASE_URL = 'https://e-mind-api.eu.cloudhub.io/api/'
 TOKEN_URL = 'https://mind-oauth2-provider.eu.cloudhub.io/external/access_token'
 REFRESH_URL = TOKEN_URL
 
+
 class Vehicle(object):
-    def __init__(self, vehicleId, mind_api, local_time=False):
+    def __init__(self, vehicle_id, mind_api, local_time=False):
         self._mind_api = mind_api
-        self.vehicleId = vehicleId;
+        self.vehicleId = vehicle_id
         self._local_time = local_time
 #        self._vehicle = self._mind_api.vehicle(self.vehicleId)
 
@@ -35,7 +37,6 @@ class Vehicle(object):
     @property
     def id(self):
         return self.vehicleId
-        # self._vehicle.get('Id')
 
     @property
     def license_plate(self):
@@ -47,31 +48,30 @@ class Vehicle(object):
 
     @property
     def fuellevel(self):
-      return self._vehicle.get('fuelLevel')
+        return self._vehicle.get('fuelLevel')
 
     @property
     def mileage_left(self):
-      return self._vehicle.get('rangeFuel')
+        return self._vehicle.get('rangeFuel')
 
     @property
     def lat(self):
-      return self._vehicle.get('lat')
-	  
+        return self._vehicle.get('lat')
+
     @property
     def lon(self):
-      return self._vehicle.get('lon')
-	  
+        return self._vehicle.get('lon')
+
     @property
     def _repr_name(self):
         return self.license_plate
 
 
 class Driver(object):
-    def __init__(self, driverId, mind_api, local_time=False):
+    def __init__(self, driver_id, mind_api, local_time=False):
         self._mind_api = mind_api
-        self._driverId = driverId;
+        self.driverId = driver_id
         self._local_time = local_time
-        #self._driver = driver
 
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self._repr_name)
@@ -97,9 +97,11 @@ class Driver(object):
         return self.first_name + ' ' + self.sur_name
 
 
-class mind(object):
-    def __init__(self, username, password, client_id='f531922867194c7197b8df82da18042e', client_secret='eB7ecfF84ed94CBDA825AC6dee503Fca', cache_ttl=270,
-                 user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 12_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/16A5366a',
+class Mind(object):
+    def __init__(self, username, password, client_id='f531922867194c7197b8df82da18042e',
+                 client_secret='eB7ecfF84ed94CBDA825AC6dee503Fca', cache_ttl=270,
+                 user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 12_0 like Mac OS X) AppleWebKit/605.1.15 '
+                            '(KHTML, like Gecko) Mobile/16A5366a',
                  token=None, token_cache_file=None,
                  local_time=False):
         self._client_id = client_id
@@ -129,30 +131,19 @@ class mind(object):
                                'w') as f:
                     json.dump(token, f)
 
-    @property
-    def token(self):
-        self._token
-    
-    @property
-    def authorized(self):
-        self._mindApi.authorized
-
     def _auth(self):
-            self._mindApi = OAuth2Session(client=LegacyApplicationClientJWT(client_id=self._client_id))
-            token = self._mindApi.fetch_token(token_url=TOKEN_URL, username=self._username, password=self._password, client_id=self._client_id, client_secret=self._client_secret)
+            self._mindApi = OAuth2Session(client=LegacyApplicationClient(client_id=self._client_id))
+            token = self._mindApi.fetch_token(token_url=TOKEN_URL, username=self._username, password=self._password,
+                                              auth=HTTPBasicAuth(self._client_id, self._client_secret))
             self._token_saver(token)
 
     def _reauth(self):
-        if (self._token_cache_file is not None and
-                    self._token is None and 
-                    os.path.exists(self._token_cache_file)):
+        if self._token_cache_file is not None and self._token is None and os.path.exists(self._token_cache_file):
                 with open(self._token_cache_file, 'r') as f:
                     self._token = json.load(f)
 
         if self._token is not None:
-
-            token = self._mindApi.refresh_token(REFRESH_URL,
-                                                 refresh_token=self._token.get("refresh_token"))
+            token = self._mindApi.refresh_token(REFRESH_URL, refresh_token=self._token.get("refresh_token"))
             self._token_saver(token)
 
     @property
@@ -167,13 +158,13 @@ class mind(object):
         query_string = urllib.parse.urlencode(params)
         url = BASE_URL + endpoint + '?' + query_string
         try:
-          response = self._mindApi.get(url)
-          response.raise_for_status()
-          return response.json()
+            response = self._mindApi.get(url)
+            response.raise_for_status()
+            return response.json()
         except TokenExpiredError:
-          _LOGGER.info("Token Expired")
-          self._auth()
-          return self._get(endpoint, **params)
+            _LOGGER.info("Token Expired")
+            self._auth()
+            return self._get(endpoint, **params)
         except HTTPError as e:
             _LOGGER.error("HTTP Error mind API: %s" % e)
         except RequestException as e:
@@ -182,12 +173,11 @@ class mind(object):
     def _post(self, endpoint, data, **params):
         query_string = urllib.parse.urlencode(params)
         url = BASE_URL + endpoint + '?' + query_string
-        response = self._mindApi.post(url, json=data, client_id=self._client_id,
-                                       client_secret=self._client_secret)
+        response = self._mindApi.post(url, json=data, client_id=self._client_id, client_secret=self._client_secret)
         response.raise_for_status()
         return response.status_code
 
-    def _checkCache(self, cache_key):
+    def _check_cache(self, cache_key):
         if cache_key in self._cache:
             cache = self._cache[cache_key]
         else:
@@ -204,43 +194,43 @@ class mind(object):
     @property
     def _vehicles(self):
         cache_key = 'vehicles'
-        value, last_update = self._checkCache(cache_key)
+        value, last_update = self._check_cache(cache_key)
         now = time.time()
 
         if not value or now - last_update > self._cache_ttl:
             new_value = self._get('vehicles')
             if new_value:
-              value = new_value
-              self._cache[cache_key] = (value, now)
+                value = new_value
+                self._cache[cache_key] = (value, now)
 
         if value:
-          return value.get('vehicleJsons')
+            return value.get('vehicleJsons')
 
-    def _vehicle(self, vehicleId):
+    def _vehicle(self, vehicle_id):
         if self._vehicles:
-          for vehicle in self._vehicles:
-              if vehicle.get('vehicleId') == vehicleId:
-                  return vehicle
+            for vehicle in self._vehicles:
+                if vehicle.get('vehicleId') == vehicle_id:
+                    return vehicle
 
     @property
     def _drivers(self):
         cache_key = 'drivers'
-        value, last_update = self._checkCache(cache_key)
+        value, last_update = self._check_cache(cache_key)
         now = time.time()
 
         if not value or now - last_update > self._cache_ttl:
             new_value = self._get('drivers')
             if new_value:
-              value = new_value
-              self._cache[cache_key] = (value, now)
+                value = new_value
+                self._cache[cache_key] = (value, now)
         if value:
-          return value.get('drivers')
+            return value.get('drivers')
 
-    def _driver(self, driverId):
+    def _driver(self, driver_id):
         if self._drivers:
-          for driver in self._drivers:
-              if driver.get('driverId') == driverId:
-                  return driver
+            for driver in self._drivers:
+                if driver.get('driverId') == driver_id:
+                    return driver
 
     @property
     def drivers(self):

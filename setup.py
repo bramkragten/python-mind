@@ -6,7 +6,7 @@ import io
 from setuptools import setup
 
 
-version = '0.0.2'
+version = '0.0.3'
 
 
 setup(name='python-mind',
@@ -19,6 +19,7 @@ setup(name='python-mind',
       author_email='mail@bramkragten.nl',
       url='https://github.com/bramkragten/python-mind/',
       packages=['mind'],
-      install_requires=['requests>=1.0.0',
-                        'requests_oauthlib>=0.7.0']
+      install_requires=['requests>=2.0.0',
+                        'requests_oauthlib>=0.7.0',
+                        'oauthlib>=2.1.0']
       )
