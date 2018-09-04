@@ -43,6 +43,74 @@ class Vehicle(object):
         return self._vehicle.get('registrationNumber')
 
     @property
+    def model(self):
+        return self._vehicle.get('model')
+
+    @property
+    def parkingBrake(self):
+        return self._vehicle.get('parkingBrake')
+
+    @property
+    def milWarningCount(self):
+        return self._vehicle.get('milWarningCount')
+
+    @property
+    def batteryVoltage(self):
+        return self._vehicle.get('batteryVoltage')
+
+    @property
+    def remainingDaysUntilService(self):
+        return self._vehicle.get('remainingDaysUntilService')
+
+    @property
+    def remainingDaysUntilMaintenance(self):
+        return self._vehicle.get('remainingDaysUntilMaintenance')
+
+    @property
+    def engineType(self):
+        return self._vehicle.get('engineType')
+
+    @property
+    def parkingBrakeElectric(self):
+        return self._vehicle.get('parkingBrakeElectric')
+
+    @property
+    def ignition(self):
+        return self._vehicle.get('ignition')
+
+    @property
+    def maintenanceOdo(self):
+        return self._vehicle.get('maintenanceOdo')
+
+    @property
+    def serviceOdo(self):
+        return self._vehicle.get('serviceOdo')
+
+    @property
+    def engineFuelType(self):
+        return self._vehicle.get('engineFuelType')
+
+    @property
+    def vin(self):
+        return self._vehicle.get('vin')
+
+    @property
+    def serviceDate(self):
+        return self._vehicle.get('serviceDate')
+
+    @property
+    def batteryCharging(self):
+        return self._vehicle.get('batteryCharging')
+
+    @property
+    def milEvents(self):
+        return self._vehicle.get('milEvents')
+
+    @property
+    def brand(self):
+        return self._vehicle.get('brand')
+
+    @property
     def mileage(self):
         return self._vehicle.get('odometer')
 
@@ -61,6 +129,50 @@ class Vehicle(object):
     @property
     def lon(self):
         return self._vehicle.get('lon')
+
+    @property
+    def geocode(self):
+        return self._mind_api.geocode(self.lat, self.lon)
+
+    @property
+    def street(self):
+        return self.geocode.get('street')
+
+    @property
+    def zipcode(self):
+        return self.geocode.get('zipcode')
+
+    @property
+    def city(self):
+        return self.geocode.get('city')
+
+    @property
+    def countryCode(self):
+        return self.geocode.get('countryCode')
+
+    @property
+    def number(self):
+        return self.geocode.get('number')
+
+    @property
+    def country(self):
+        return self.geocode.get('country')
+
+    @property
+    def maintenanceDate(self):
+        return self._vehicle.get('maintenanceDate')
+
+    @property
+    def milErrorCount(self):
+        return self._vehicle.get('milErrorCount')
+
+    @property
+    def edition(self):
+        return self._vehicle.get('edition')
+
+    @property
+    def dealer(self):
+        return self._vehicle.get('dealer')
 
     @property
     def _repr_name(self):
@@ -231,6 +343,19 @@ class Mind(object):
             for driver in self._drivers:
                 if driver.get('driverId') == driver_id:
                     return driver
+
+    def geocode(self, lat, lon):
+        cache_key = 'geocode' + str(lat) + str(lon)
+        value, last_update = self._check_cache(cache_key)
+        now = time.time()
+
+        if not value:  # geocoding value will not change so no need for ttl
+            new_value = self._get('geocoding/reverse', lat=lat, lon=lon, language='nl')
+            if new_value:
+                value = new_value
+                self._cache[cache_key] = (value, now)
+        if value:
+            return value
 
     @property
     def drivers(self):
