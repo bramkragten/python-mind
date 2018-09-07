@@ -47,8 +47,24 @@ class Vehicle(object):
         return self._vehicle.get('model')
 
     @property
-    def parkingBrake(self):
-        return self._vehicle.get('parkingBrake')
+    def parking_brake(self):
+        return self.state.get('parking_brake')
+
+    @property
+    def doors_locked(self):
+        return self.state.get('doors_locked')
+
+    @property
+    def range_electric(self):
+        return self.state.get('range_electric')
+
+    @property
+    def state_of_charge(self):
+        return self.state.get('state_of_charge')
+
+    @property
+    def battery_charging(self):
+        return self.state.get('battery_charging')
 
     @property
     def milWarningCount(self):
@@ -133,6 +149,10 @@ class Vehicle(object):
     @property
     def geocode(self):
         return self._mind_api.geocode(self.lat, self.lon)
+
+    @property
+    def state(self):
+        return self._mind_api.state(self.id)
 
     @property
     def street(self):
@@ -343,6 +363,22 @@ class Mind(object):
             for driver in self._drivers:
                 if driver.get('driverId') == driver_id:
                     return driver
+
+    def state(self, vehicle_id):
+        cache_key = 'state' + str(vehicle_id)
+        value, last_update = self._check_cache(cache_key)
+        now = time.time()
+
+        if not value or now - last_update > self._cache_ttl:
+            new_value = self._get('vehicles/'+str(vehicle_id)+'/state')
+            if new_value:
+                state_dict = {}
+                for state in new_value:
+                    state_dict[state.get("scoreType")] = state.get("score")
+                value = state_dict
+                self._cache[cache_key] = (value, now)
+        if value:
+            return value
 
     def geocode(self, lat, lon):
         cache_key = 'geocode' + str(lat) + str(lon)
